@@ -1,0 +1,80 @@
+/*1. Owner can transfer the ownership of the Token Contract.
+2. Owner can approve or delegate anybody to manage the pricing of tokens.
+3. Update pricing method to allow owner and approver to change the price of the token
+3. Add the ability that Token Holder can return the Token and get back the Ether based on the current price.*/
+
+ 
+ pragma solidity 0.8.4;
+import"https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC20/ERC20.sol";
+import "https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/access/Ownable.sol";
+
+contract mytoken is Ownable, ERC20{
+
+  constructor ()ERC20("mytoken","mt")
+  {owneris=msg.sender; 
+       }
+     uint  cap=200;
+  address owneris;
+  
+      uint rate=100;
+     uint deploymenttime=block.timestamp;
+    uint duetime =30 days;
+    function _mint(address account, uint256 amount) internal virtual override {
+        
+        require(ERC20.totalSupply() + amount <= cap, "ERC20Capped: cap exceeded");
+        super._mint(account, amount);
+    }
+
+   function buytoken( )external payable {
+       _mint  (msg.sender,msg.value*rate);
+       
+   } 
+   //STEP 2 : ADDING approver
+   address _approver;
+  function addapprover (address approver)public  returns (address){
+      _approver=approver;
+        require (msg.sender==owneris,"only owner can add approver");
+        return approver;
+    }
+    
+
+   function adjustprice(uint newprice) external  returns(uint) {
+       
+       //STEP 3: allowing approver to change the price of token
+       
+       require (msg.sender==owneris || msg.sender==_approver,"only owner or approver can adjust price");
+      
+       rate=newprice;
+       return newprice;
+       
+   }
+  
+    fallback () external payable {
+        if (msg.value>0){
+        _mint (msg.sender,msg.value*rate*10**18);}
+    }
+   
+ 
+    function transfer(address recipient, uint256 amount) public  virtual override returns (bool) {
+      //   require (block.timestamp==deploymenttime+duetime,'cant transfer before 30 days');//time bound fearture 
+        _transfer(_msgSender(), recipient, amount);
+        return true;
+    }
+
+   
+
+  
+    // STEP : 4  Add the ability that Token Holder can return the Token and get back the Ether based on the current price.
+    
+   function returntoken (uint returnamount) public payable returns (uint){
+     
+       
+       transfer(owneris,returnamount);
+       address payable fundrecepient=payable (msg.sender);
+          
+          fundrecepient.transfer(returnamount/rate);
+          uint newbalance= fundrecepient.balance ;
+    return newbalance;
+}
+    
+}
